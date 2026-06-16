@@ -695,13 +695,13 @@ def render_app_footer():
     email = "eliran938@gmail.com"
 
     main_text = f"© כל הזכויות שמורות | פותח על ידי {developer_name}"
-    promo_text = "בניית אפליקציות מותאמות אישית לעסקים, אירועים וניהול נתונים"
+    promo_text = "להצעות ייעול ושאלות ניתן ליצור קשר-"
 
-    message_text = "היי אלירן, ראיתי את האפליקציה שלך ואהבתי. אשמח לדעת פרטים על בניית אפליקציה מותאמת אישית."
+    message_text = "היי אלירן,בקשר לאפליקציית ניהול הטורניר. רציתי לשאול/להציע...."
 
     whatsapp_link = f"https://wa.me/{phone_whatsapp}?text={quote(message_text)}"
 
-    email_subject = quote("התעניינות בבניית אפליקציה מותאמת אישית")
+    email_subject = quote("שאלה על האפליקציה")
     email_body = quote(message_text)
     email_link = f"mailto:{email}?subject={email_subject}&body={email_body}"
 

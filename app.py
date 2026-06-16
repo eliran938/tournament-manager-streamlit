@@ -72,10 +72,11 @@ if not st.session_state['logged_in'] and not st.session_state['viewer_registered
     st.markdown("בחרו יישוב ושם תצוגה כדי לצפות בלו״ז, בטבלאות ובתוצאות בזמן אמת.")
 
     settlement = st.selectbox(
-        "יישוב",
+        "בחר יישוב",
+        placeholder="בחר יישוב",
         options=[""] + config.SETTLEMENTS,
-        index=0,
-        placeholder="בחר יישוב"
+        index=0
+        
     )
 
     guest_name_input = st.text_input(
@@ -130,7 +131,7 @@ if not st.session_state['logged_in'] and not st.session_state['viewer_registered
 
     st.markdown("---")
 
-    with st.expander("🔒 כניסת צוות"):
+    with st.expander("🔒 איזור התחברות לאנשי צוות"):
         username_input = st.text_input("שם משתמש", placeholder="הזן שם משתמש")
         password_input = st.text_input("סיסמה", type="password", placeholder="הזן סיסמה")
 
@@ -154,6 +155,7 @@ if not st.session_state['logged_in'] and not st.session_state['viewer_registered
             else:
                 st.error("פרטים שגויים, נסה שוב.")
 
+    ui_components.render_app_footer()   
     st.stop()
 
 
