@@ -681,6 +681,56 @@ def get_player_flag_html(player_name, country_code):
     </div>
     """
 
+def render_floating_refresh_button():
+    """
+    Shows a fixed refresh button and returns True when it is clicked.
+    The caller decides what refresh means, so this UI helper stays dependency-light.
+    """
+    st.markdown("""
+        <style>
+        .st-key-floating_refresh_button {
+            position: fixed !important;
+            left: 16px !important;
+            bottom: 16px !important;
+            z-index: 9999 !important;
+            width: auto !important;
+        }
+
+        .st-key-floating_refresh_button button {
+            background-color: #0F766E !important;
+            color: #FFFFFF !important;
+            border: 1px solid #0B5F59 !important;
+            border-radius: 999px !important;
+            box-shadow: 0 6px 16px rgba(15, 118, 110, 0.22) !important;
+            font-size: 14px !important;
+            font-weight: 800 !important;
+            min-width: 112px !important;
+            padding: 8px 14px !important;
+        }
+
+        .st-key-floating_refresh_button button:hover {
+            background-color: #115E59 !important;
+            border-color: #115E59 !important;
+            color: #FFFFFF !important;
+        }
+
+        @media screen and (max-width: 600px) {
+            .st-key-floating_refresh_button {
+                left: 10px !important;
+                bottom: 10px !important;
+            }
+
+            .st-key-floating_refresh_button button {
+                font-size: 13px !important;
+                min-width: 102px !important;
+                padding: 7px 12px !important;
+            }
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    return st.button("רענן נתונים", key="floating_refresh_button")
+
 def render_app_footer():
     """
     מציג חתימת פיתוח ופרטי קשר בתחתית האפליקציה.
@@ -714,4 +764,3 @@ def render_app_footer():
         f"📞 {phone_display}"
     )
 
-    

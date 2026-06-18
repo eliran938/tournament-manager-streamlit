@@ -135,6 +135,84 @@ def find_recent_guest_by_token(visitor_token, competition_name, minutes=60):
         # אם יש שגיאה כלשהי בפורמט התאריכים, לא קורסים - פשוט מחזירים שאין זיהוי
         return None
 
+def find_recent_staff_by_token(staff_token, competition_name, minutes=60):
+    """
+    Restores a staff login by a temporary session token.
+    The token is random and expires by time; no password is stored in the URL.
+    """
+    if not staff_token:
+        return None
+
+    conn = get_connection()
+
+    try:
+        df_log = conn.read(spreadsheet=SHEET_URL, worksheet="staff_sessions")
+    except Exception:
+        return None
+
+    if df_log.empty or "staff_session" not in df_log.columns:
+        return None
+
+    try:
+        df_log["timestamp"] = pd.to_datetime(df_log["timestamp"], errors="coerce")
+        cutoff_time = datetime.now() - pd.Timedelta(minutes=minutes)
+
+        matches = df_log[
+            (df_log["staff_session"].astype(str) == str(staff_token))
+            & (df_log["competition_name"].astype(str) == str(competition_name))
+            & (df_log["timestamp"] >= cutoff_time)
+        ]
+
+        if matches.empty:
+            return None
+
+        latest = matches.sort_values(by="timestamp").iloc[-1]
+
+        username = str(latest.get("username", "")).strip()
+        if not username:
+            username = str(latest.get("display_name", "")).strip()
+
+        if not username:
+            return None
+
+        return {
+            "username": username,
+            "staff_token": latest.get("staff_session", staff_token)
+        }
+    except Exception:
+        return None
+
+def add_staff_session(username, competition_name, tour_id, staff_token):
+    """
+    Stores a small staff restore record.
+    This intentionally avoids scanning access_log, which can grow large.
+    """
+    conn = get_connection()
+
+    try:
+        df_sessions = conn.read(spreadsheet=SHEET_URL, worksheet="staff_sessions")
+    except Exception:
+        df_sessions = pd.DataFrame(columns=[
+            "timestamp",
+            "competition_name",
+            "tour_id",
+            "username",
+            "staff_session"
+        ])
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    new_row = pd.DataFrame([{
+        "timestamp": now,
+        "competition_name": competition_name,
+        "tour_id": tour_id,
+        "username": username,
+        "staff_session": staff_token
+    }])
+
+    df_sessions = pd.concat([df_sessions, new_row], ignore_index=True)
+    conn.update(spreadsheet=SHEET_URL, worksheet="staff_sessions", data=df_sessions)
+
 def get_staff_credentials():
     """מושך את רשימת אנשי הצוות מהשיטס למילון"""
     try:
@@ -144,5 +222,5 @@ def get_staff_credentials():
         df['password'] = df['password'].astype(str).str.strip()
         return dict(zip(df['username'], df['password']))
     except Exception:
-        # מקרה חירום (אם הלשונית לא נמצאה) - מאפשר רק למנהל הראשי להיכנס
-        return {"admin": "0000"}
+        # If staff_users cannot be loaded, do not allow a hardcoded fallback login.
+        return {}

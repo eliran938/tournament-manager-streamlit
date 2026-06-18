@@ -27,16 +27,20 @@ if 'viewer_registered' not in st.session_state:
     st.session_state['viewer_settlement'] = ""
     st.session_state['visitor_token'] = ""
 
+if 'staff_session_token' not in st.session_state:
+    st.session_state['staff_session_token'] = ""
+
+if 'show_refresh_success' not in st.session_state:
+    st.session_state['show_refresh_success'] = False
+
 if 'nickname_rerolls_left' not in st.session_state:
     st.session_state['nickname_rerolls_left'] = config.MAX_NICKNAME_REROLLS
 
 if 'current_nickname' not in st.session_state:
     st.session_state['current_nickname'] = random.choice(list(config.PLAYER_NICKNAMES_DICT.keys()))
 
-# הפעלת רענון אוטומטי (כל 30 שניות) רק אם המשתמש הוא אורח. 
-# אנחנו לא מרעננים לאנשי צוות כדי לא לקטוע אותם באמצע הקלדת תוצאה!
-if not st.session_state['logged_in']:
-    st_autorefresh(interval=30000, key="data_refresh")
+# Auto-refresh is activated only after URL tokens are restored.
+# Staff members are never force-refreshed, so score entry is not interrupted.
 
 # 3. זיהוי הטורניר מהקישור (URL)
 # אם לא נכתב כלום בקישור, נניח שמדובר בבית אל לצורך בדיקות
@@ -62,6 +66,28 @@ if (
         st.session_state['viewer_name'] = recent_guest["display_name"]
         st.session_state['viewer_settlement'] = recent_guest["settlement"]
         st.session_state['visitor_token'] = recent_guest["visitor_token"]
+
+staff_session_from_url = st.query_params.get("staff_session", "")
+
+if (
+    not st.session_state['logged_in']
+    and not st.session_state['viewer_registered']
+    and staff_session_from_url
+):
+    recent_staff = data_manager.find_recent_staff_by_token(
+        staff_token=staff_session_from_url,
+        competition_name=tour_name,
+        minutes=60
+    )
+
+    if recent_staff:
+        st.session_state['logged_in'] = True
+        st.session_state['username'] = recent_staff["username"]
+        st.session_state['staff_session_token'] = recent_staff["staff_token"]
+
+# Guests keep passive live updates. Staff refresh manually so score entry is not interrupted.
+if not st.session_state['logged_in']:
+    st_autorefresh(interval=30000, key="data_refresh")
 
 
 # מסך פתיחה ראשי — מוצג רק למי שעדיין לא נכנס כאורח או כצוות
@@ -138,8 +164,11 @@ if not st.session_state['logged_in'] and not st.session_state['viewer_registered
         if st.button("התחבר כאיש צוות", type="primary", use_container_width=True):
             staff_users_dict = data_manager.get_staff_credentials()
             if username_input in staff_users_dict and staff_users_dict[username_input] == password_input:
+                staff_session_token = str(uuid.uuid4())
+
                 st.session_state['logged_in'] = True
                 st.session_state['username'] = username_input
+                st.session_state['staff_session_token'] = staff_session_token
 
                 data_manager.add_to_access_log(
                     display_name=username_input,
@@ -148,15 +177,32 @@ if not st.session_state['logged_in'] and not st.session_state['viewer_registered
                     competition_name=tour_name,
                     tour_id=tour_id,
                     username=username_input,
-                    visitor_token=""
+                    visitor_token=staff_session_token
                 )
 
+                data_manager.add_staff_session(
+                    username=username_input,
+                    competition_name=tour_name,
+                    tour_id=tour_id,
+                    staff_token=staff_session_token
+                )
+
+                st.query_params["staff_session"] = staff_session_token
                 st.rerun()
             else:
                 st.error("פרטים שגויים, נסה שוב.")
 
     ui_components.render_app_footer()   
     st.stop()
+
+if ui_components.render_floating_refresh_button():
+    st.cache_data.clear()
+    st.session_state['show_refresh_success'] = True
+    st.rerun()
+
+if st.session_state.get('show_refresh_success'):
+    st.toast("הנתונים מעודכנים", icon="✅")
+    st.session_state['show_refresh_success'] = False
 
 
 # פס מצב עליון במקום sidebar
@@ -169,6 +215,9 @@ if st.session_state['logged_in']:
     with col_status_2:
         if st.button("התנתק"):
             st.session_state['logged_in'] = False
+            st.session_state['staff_session_token'] = ""
+            if "staff_session" in st.query_params:
+                del st.query_params["staff_session"]
             st.session_state['username'] = "אורח"
             st.rerun()
 
