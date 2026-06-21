@@ -147,12 +147,19 @@ def update_knockout_stages(df):
     """
     import pandas as pd
     
-    # עוברים על כל טורניר (שכבת גיל) בנפרד
-    tournaments = df['tournament_name'].dropna().unique()
+    # עוברים על כל תחרות ושכבת גיל בנפרד.
+    # חשוב לא להסתפק ב-tournament_name בלבד, כי אותו שם שכבת גיל יכול להופיע בכמה תחרויות.
+    scope_columns = ['tournament_name']
+    if 'competition_name' in df.columns:
+        scope_columns = ['competition_name', 'tournament_name']
 
-    for tour in tournaments:
-        # סינון משחקי הטורניר הנוכחי (למשל: "טורניר ה'")
-        tour_mask = df['tournament_name'] == tour
+    scopes = df[scope_columns].dropna().drop_duplicates()
+
+    for _, scope in scopes.iterrows():
+        # סינון משחקי הטורניר הנוכחי בתוך התחרות הנוכחית
+        tour_mask = df['tournament_name'] == scope['tournament_name']
+        if 'competition_name' in scope_columns:
+            tour_mask = tour_mask & (df['competition_name'] == scope['competition_name'])
         df_tour = df[tour_mask]
 
         # יצירת מסננים לפי שלבים עבור הטורניר הנוכחי

@@ -182,3 +182,40 @@ def test_update_knockout_assigns_final_after_semis_done():
 
     assert final["team_a"] == "זאבים"
     assert final["team_b"] == "אריות"
+
+
+def test_update_knockout_separates_same_tournament_name_by_competition():
+    df_a = make_basic_tournament_df()
+    df_b = make_basic_tournament_df()
+
+    df_a["competition_name"] = "competition_a"
+    df_b["competition_name"] = "competition_b"
+
+    df_a["team_a"] = df_a["team_a"].apply(
+        lambda value: f"א-{value}" if pd.notna(value) else value
+    )
+    df_a["team_b"] = df_a["team_b"].apply(
+        lambda value: f"א-{value}" if pd.notna(value) else value
+    )
+    df_b["team_a"] = df_b["team_a"].apply(
+        lambda value: f"ב-{value}" if pd.notna(value) else value
+    )
+    df_b["team_b"] = df_b["team_b"].apply(
+        lambda value: f"ב-{value}" if pd.notna(value) else value
+    )
+
+    df = pd.concat([df_a, df_b], ignore_index=True)
+
+    updated = logic.update_knockout_stages(df)
+
+    for competition, prefix in [("competition_a", "א-"), ("competition_b", "ב-")]:
+        semis = updated[
+            (updated["competition_name"] == competition)
+            & (updated["stage"].str.contains("חצי", na=False))
+        ].sort_values("time")
+
+        assert len(semis) == 2
+        assert semis["team_a"].notna().all()
+        assert semis["team_b"].notna().all()
+        assert semis["team_a"].astype(str).str.startswith(prefix).all()
+        assert semis["team_b"].astype(str).str.startswith(prefix).all()
